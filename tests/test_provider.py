@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-import fishaudio_tts.provider as provider_mod
-from tests.conftest import provider_mod  # noqa: F401  (ensures package loaded)
+import fishaudio_tts.provider as provider_mod  # noqa: F401  (conftest preloads pkg)
 
 FishAudioTTSProvider = provider_mod.FishAudioTTSProvider
 
