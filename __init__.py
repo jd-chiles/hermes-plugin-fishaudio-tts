@@ -20,12 +20,6 @@ import json
 import logging
 from pathlib import Path
 
-from .provider import (
-    SETTING_KEYS,
-    FishAudioTTSProvider,
-    _validate_settings,
-)
-
 logger = logging.getLogger(__name__)
 
 # Singleton so the tool handler and future callers share one settings dict.
@@ -105,6 +99,8 @@ def _handle_voice_admin(args: dict, **kwargs) -> str:
         return _ok({"settings": provider.current_settings()})
 
     if action == "set_settings":
+        from .provider import _validate_settings
+
         clean, errors = _validate_settings(args.get("settings"))
         if errors:
             return _err("; ".join(errors), errors=errors)
@@ -177,6 +173,8 @@ def register(ctx) -> None:
     Called once by the plugin loader.
     """
     global _PROVIDER
+    from .provider import FishAudioTTSProvider
+
     provider = FishAudioTTSProvider()
     _PROVIDER = provider
 

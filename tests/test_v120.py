@@ -202,7 +202,7 @@ def plugin_module():
 def wired(plugin_module):
     """Plugin registered against a FakeCtx — mirrors register()."""
     ctx = FakeCtx()
-    provider = plugin_module.FishAudioTTSProvider()
+    provider = provider_mod.FishAudioTTSProvider()
     plugin_module._PROVIDER = provider
     provider.attach_settings(ctx)
     provider._settings_ctx = ctx
@@ -422,7 +422,7 @@ def run(coro):
 
 class TestPluginApi:
     def test_get_settings(self, api, plugin_module):
-        provider = plugin_module.FishAudioTTSProvider()
+        provider = provider_mod.FishAudioTTSProvider()
         provider.apply_settings({"voice_id": "v1", "latency": "normal"})
         plugin_module._PROVIDER = provider
         resp = run(api.get_settings())
@@ -430,7 +430,7 @@ class TestPluginApi:
         assert resp["settings"]["voice_id"] == "v1"
 
     def test_post_settings_validates(self, api, plugin_module, monkeypatch):
-        provider = plugin_module.FishAudioTTSProvider()
+        provider = provider_mod.FishAudioTTSProvider()
         provider._settings_ctx = FakeCtx()
         plugin_module._PROVIDER = provider
         monkeypatch.setattr(provider, "list_voices", lambda: [])
@@ -446,7 +446,7 @@ class TestPluginApi:
 
     def test_post_settings_persists_via_ctx(self, api, plugin_module, monkeypatch):
         ctx = FakeCtx()
-        provider = plugin_module.FishAudioTTSProvider()
+        provider = provider_mod.FishAudioTTSProvider()
         provider._settings_ctx = ctx
         plugin_module._PROVIDER = provider
         monkeypatch.setattr(provider, "list_voices", lambda: [])
@@ -455,7 +455,7 @@ class TestPluginApi:
         assert provider.settings["model"] == "s1"
 
     def test_get_voices_mocked(self, api, plugin_module, monkeypatch):
-        provider = plugin_module.FishAudioTTSProvider()
+        provider = provider_mod.FishAudioTTSProvider()
         plugin_module._PROVIDER = provider
         monkeypatch.setattr(
             provider, "list_voices",
@@ -467,7 +467,7 @@ class TestPluginApi:
         assert resp["voices"][0]["display"] == "Narrator"
 
     def test_voices_ttl_cache(self, api, plugin_module, monkeypatch):
-        provider = plugin_module.FishAudioTTSProvider()
+        provider = provider_mod.FishAudioTTSProvider()
         plugin_module._PROVIDER = provider
         count = {"n": 0}
 
@@ -483,7 +483,7 @@ class TestPluginApi:
         assert first["voices"] == second["voices"]
 
     def test_preview_mocked(self, api, plugin_module, clean_env, monkeypatch):
-        provider = plugin_module.FishAudioTTSProvider()
+        provider = provider_mod.FishAudioTTSProvider()
         plugin_module._PROVIDER = provider
         clean_env.setenv("FISH_API_KEY", "test-key")
 
@@ -497,13 +497,13 @@ class TestPluginApi:
         assert base64.b64decode(resp["audio_base64"]) == b"PREVIEW"
 
     def test_preview_requires_text(self, api, plugin_module):
-        plugin_module._PROVIDER = plugin_module.FishAudioTTSProvider()
+        plugin_module._PROVIDER = provider_mod.FishAudioTTSProvider()
         with pytest.raises(api.HTTPException) as exc:
             run(api.preview({}))
         assert exc.value.status_code == 400
 
     def test_preview_requires_key(self, api, plugin_module, clean_env):
-        plugin_module._PROVIDER = plugin_module.FishAudioTTSProvider()
+        plugin_module._PROVIDER = provider_mod.FishAudioTTSProvider()
         clean_env.delenv("FISH_API_KEY", raising=False)
         with pytest.raises(api.HTTPException) as exc:
             run(api.preview({"text": "hi"}))
@@ -511,7 +511,7 @@ class TestPluginApi:
 
     def test_no_secrets_in_any_response(self, api, plugin_module, clean_env, monkeypatch):
         """Responses must never contain the API key value."""
-        provider = plugin_module.FishAudioTTSProvider()
+        provider = provider_mod.FishAudioTTSProvider()
         provider._settings_ctx = FakeCtx()
         plugin_module._PROVIDER = provider
         secret = "sk-test-secret-123"

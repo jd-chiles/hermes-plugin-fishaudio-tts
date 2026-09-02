@@ -125,9 +125,10 @@ async def get_settings():
 @router.post("/settings")
 async def post_settings(body: Dict[str, Any]):
     """Validate + persist a settings patch (same rules as the tool)."""
-    plugin = _plugin()
     provider = _provider()
-    clean, errors = plugin._validate_settings(body or {})
+    from fishaudio_tts.provider import _validate_settings
+
+    clean, errors = _validate_settings(body or {})
     if errors:
         raise HTTPException(status_code=400, detail="; ".join(errors))
     if clean.get("voice_id"):
