@@ -58,8 +58,12 @@ def provider():
 
 
 @pytest.fixture
-def clean_env(monkeypatch):
-    """Remove every FISH_* variable so tests control config from scratch."""
-    for var in ("FISH_API_KEY", "FISH_VOICE_ID", "FISH_TTS_MODEL"):
+def clean_env(monkeypatch, tmp_path):
+    """Remove every FISH_* variable so tests control config from scratch.
+    Also points TMPDIR at a per-test dir so the response cache never
+    leaks between tests or runs."""
+    for var in ("FISH_API_KEY", "FISH_VOICE_ID", "FISH_TTS_MODEL",
+                "FISH_TTS_CACHE"):
         monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
     return monkeypatch

@@ -1,5 +1,9 @@
 # fishaudio-tts — Fish Audio voice backend for Hermes Agent
 
+[![CI](https://github.com/jd-chiles/hermes-plugin-fishaudio-tts/actions/workflows/ci.yml/badge.svg)](https://github.com/jd-chiles/hermes-plugin-fishaudio-tts/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org)
+
 A [Hermes Agent](https://hermes-agent.nousresearch.com/docs) plugin that makes your agent *speak* through [Fish Audio](https://fish.audio) — with one twist that matters in practice: it **refuses to read code out loud**.
 
 ## The problem
@@ -37,22 +41,36 @@ Plugin providers in Hermes take the **per-sentence synchronous path**: each sent
 
 ## Install
 
-```bash
-# 1. Clone into your Hermes plugins directory
-git clone https://github.com/jd-chiles/hermes-plugin-fishaudio-tts.git \
-    ~/.hermes/plugins/tts/fishaudio
+### Option A — the standard way (recommended)
 
-# 2. Enable the plugin
-hermes plugins enable tts/fishaudio
+```bash
+# 1. Install via the Hermes plugin manager
+hermes plugins install jd-chiles/hermes-plugin-fishaudio-tts
+
+# 2. Configure it as your voice provider
+#    Run `hermes` and open Settings → Voice → Text-to-Speech provider → Fish Audio.
+#    The provider's setup schema prompts you for:
+#      - FISH_API_KEY    (get one at https://fish.audio/app/api-keys/)
+#      - FISH_VOICE_ID   (optional voice model id)
+#      - FISH_TTS_MODEL  (optional; default s2.1-pro-free)
+#    Secrets go into ~/.hermes/.env, never config.yaml.
 
 # 3. Make it the default TTS provider
 hermes config set tts.provider fishaudio
+```
 
-# 4. Add your key to ~/.hermes/.env (secrets only — never config.yaml)
+### Option B — manual git clone
+
+```bash
+git clone https://github.com/jd-chiles/hermes-plugin-fishaudio-tts.git \
+    ~/.hermes/plugins/tts/fishaudio
+
+hermes plugins enable tts/fishaudio
+hermes config set tts.provider fishaudio
 echo 'FISH_API_KEY=your-key-here' >> ~/.hermes/.env
 ```
 
-Get an API key at [fish.audio/app/api-keys](https://fish.audio/app/api-keys/). The default model `s2.1-pro-free` is Fish Audio's free developer tier.
+The default model `s2.1-pro-free` is Fish Audio's free developer tier.
 
 ## Configuration
 

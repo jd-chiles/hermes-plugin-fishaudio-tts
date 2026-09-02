@@ -1,0 +1,10 @@
+{
+  "name": "fishaudio",
+  "description": "Fish Audio text-to-speech backend for Hermes. Registers a 'fishaudio' TTS provider (s2.1-pro-free by default) that strips fenced/inline code and markdown before synthesis so technical replies are not read verbatim, synthesizes sentence-by-sentence for low latency, retries rate limits and server errors with backoff, and caches responses for 24 hours. Exposes voice/model catalogs and opts into voice-bubble delivery (Opus) on Telegram.",
+  "author": "Jon David Cho Chiles",
+  "tags": ["tts", "voice", "fish-audio", "speech", "audio", "telegram"],
+  "repo": "jd-chiles/hermes-plugin-fishaudio-tts",
+  "ref": "v1.1.0",
+  "homepage": "https://github.com/jd-chiles/hermes-plugin-fishaudio-tts",
+  "capabilities": ["tts", "voice-catalog"]
+}

@@ -1,5 +1,5 @@
 name: fishaudio
-version: 1.0.0
-description: "Fish Audio text-to-speech backend for Hermes. Registers a 'fishaudio' TTS provider that synthesizes speech via POST https://api.fish.audio/v1/tts using the s2.1-pro-free developer tier. Strips fenced/inline code blocks and markdown noise before synthesis so technical replies are not read verbatim, which also keeps latency down on code-heavy answers."
+version: 1.1.0
+description: "Fish Audio text-to-speech backend for Hermes. Registers a 'fishaudio' TTS provider that synthesizes speech via POST https://api.fish.audio/v1/tts (s2.1-pro-free developer tier by default, with documented paid tiers selectable). Strips fenced/inline code blocks and markdown noise before synthesis so technical replies are not read verbatim, synthesizes sentence-by-sentence for low first-audio latency, retries rate limits and server errors with backoff, caches responses for 24 hours, and exposes voice/model catalogs."
 author: custom
 kind: standalone
