@@ -10,6 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Checkout into an identifier-named directory. pytest's package
+          # resolution rejects directory names that aren't valid Python
+          # identifiers; the repo name contains hyphens, which would make
+          # pytest import the root __init__.py as a top-level module and die
+          # on its relative imports ("attempted relative import with no known
+          # parent package").
+          path: plugin
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
