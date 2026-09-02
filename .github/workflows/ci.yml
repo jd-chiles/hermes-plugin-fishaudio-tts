@@ -24,4 +24,5 @@ jobs:
       - name: Install test deps
         run: pip install pytest requests
       - name: Run tests
+        working-directory: plugin
         run: python -m pytest tests/ -q
