@@ -1,5 +1,31 @@
 name: fishaudio
-version: 1.1.0
-description: "Fish Audio text-to-speech backend for Hermes. Registers a 'fishaudio' TTS provider that synthesizes speech via POST https://api.fish.audio/v1/tts (s2.1-pro-free developer tier by default, with documented paid tiers selectable). Strips fenced/inline code blocks and markdown noise before synthesis so technical replies are not read verbatim, synthesizes sentence-by-sentence for low first-audio latency, retries rate limits and server errors with backoff, caches responses for 24 hours, and exposes voice/model catalogs."
+version: 1.2.0
+manifest_version: 2
+api_version: 1
+description: "Fish Audio text-to-speech backend for Hermes. Registers a 'fishaudio' TTS provider that synthesizes speech via POST https://api.fish.audio/v1/tts (s2.1-pro-free developer tier by default, with documented paid tiers selectable). Strips fenced/inline code blocks and markdown noise before synthesis so technical replies are not read verbatim, synthesizes sentence-by-sentence for low first-audio latency, retries rate limits and server errors with backoff, caches responses for 24 hours, and exposes voice/model catalogs. v1.2.0 adds a persisted settings layer (voice/model/latency/chunk_length; precedence: plugin setting > env var > default), the fishaudio_voice_admin tool, the bundled fishaudio:voice-admin skill, a dashboard Voice Studio panel, and a desktop plugin half (opt-in — enable it in Settings -> Plugins)."
 author: custom
 kind: standalone
+license: MIT
+homepage: https://github.com/jd-chiles/hermes-plugin-fishaudio-tts
+tags: [tts, voice, fish-audio, dashboard]
+requires_env:
+  - FISH_API_KEY
+provides_tools:
+  - fishaudio_voice_admin
+config_schema:
+  voice_id:
+    type: str
+    default: ""
+    description: "Fish Audio voice model id; empty = fall back to FISH_VOICE_ID env / server default"
+  model:
+    type: str
+    default: ""
+    description: "TTS model string (e.g. s2.1-pro-free); empty = fall back to FISH_TTS_MODEL env / default"
+  latency:
+    type: str
+    default: ""
+    description: "latency mode: normal | balanced (balanced ~300ms time-to-first-audio)"
+  chunk_length:
+    type: int
+    default: 0
+    description: "synthesis chunk length 20-2000 (default 120; smaller = faster first audio)"

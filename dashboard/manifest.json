@@ -1,0 +1,14 @@
+{
+  "name": "fishaudio",
+  "label": "Fish Audio",
+  "description": "Fish Audio text-to-speech — voice studio: browse the voice catalog, tune model/latency/chunk_length, preview samples, and save settings",
+  "icon": "AudioWaveform",
+  "version": "1.2.0",
+  "tab": {
+    "path": "/fish-audio",
+    "position": "end"
+  },
+  "entry": "dist/index.js",
+  "css": "dist/style.css",
+  "api": "plugin_api.py"
+}

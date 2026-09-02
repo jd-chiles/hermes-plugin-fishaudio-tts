@@ -76,11 +76,40 @@ The default model `s2.1-pro-free` is Fish Audio's free developer tier.
 
 | Env var | Required | Default | Purpose |
 |---|---|---|---|
-| `FISH_API_KEY` | yes | — | Fish Audio API key (bearer auth) |
+| `FISH_API_KEY` | yes | — | Fish Audio API key (bearer auth). **Secret — lives in `.env` only, never in plugin settings.** |
 | `FISH_VOICE_ID` | no | *(Fish default voice)* | Voice model id, sent as `reference_id` |
 | `FISH_TTS_MODEL` | no | `s2.1-pro-free` | Fish Audio TTS model (see [models overview](https://docs.fish.audio/developer-guide/models-pricing/models-overview)) |
 
-Per-call overrides (`voice`, `model`, `speed`) passed by the gateway take precedence over the env vars. `speed` maps to Fish's `prosody.speed`.
+### Settings layer (v1.2.0)
+
+Voice/model/latency/chunk_length can now be **persisted as plugin settings** (via the `fishaudio_voice_admin` tool, the bundled `fishaudio:voice-admin` skill, or the dashboard Voice Studio) and live under `plugins.entries.fishaudio.settings` in config.yaml. Resolution order everywhere:
+
+```
+per-call override  >  plugin setting  >  env var  >  built-in default
+```
+
+Latency defaults to `balanced` (~300 ms time-to-first-audio), chunk_length to `120`. `FISH_API_KEY` is deliberately **not** settable through the settings layer — secrets never go through plugin config. Per-call overrides (`voice`, `model`, `speed`) passed by the gateway still win over everything; `speed` maps to Fish's `prosody.speed`.
+
+## Voice management (v1.2.0)
+
+Three coordinated surfaces, one package:
+
+- **`fishaudio_voice_admin` tool** — actions `list_voices`, `get_settings`,
+  `set_settings` (validated, voice id checked against the catalog),
+  `preview` (synthesize sample text → base64 mp3, persists nothing).
+- **Bundled skill `fishaudio:voice-admin`** — load it with
+  `skill_view("fishaudio:voice-admin")`; it teaches the agent the full
+  natural-language flow: list voices → propose matches for the user's
+  description → confirm → set → offer a preview.
+- **Dashboard Voice Studio (`/fish-audio` tab)** — voice picker with search,
+  model/latency/chunk_length controls, in-browser preview playback, and a
+  Save button. Backed by `dashboard/plugin_api.py` (routes under
+  `/api/plugins/fishaudio/`). The desktop app gets the same panel via
+  `desktop/plugin.js`.
+
+> The desktop half is **opt-in**: after install it appears in the desktop
+> app's **Settings → Plugins** but stays off until you toggle it, then run
+> ⌘K → **Reload desktop plugins**.
 
 ## Usage
 
@@ -99,10 +128,15 @@ Per-call overrides (`voice`, `model`, `speed`) passed by the gateway take preced
 
 | File | Role |
 |---|---|
-| `plugin.yaml` | Manifest (`kind: standalone`, author, description) |
-| `__init__.py` | `register(ctx)` → `ctx.register_tts_provider(...)` |
-| `provider.py` | `FishAudioTTSProvider` — synthesis, config resolution, latency tuning |
+| `plugin.yaml` | Manifest (v2 schema: `config_schema`, `provides_tools`, tags) |
+| `__init__.py` | `register(ctx)` → TTS provider + `fishaudio_voice_admin` tool + settings layer + bundled skill |
+| `provider.py` | `FishAudioTTSProvider` — synthesis, settings resolution (setting > env > default), latency tuning |
 | `normalize.py` | `normalize_for_speech()` — code/markdown stripping pre-pass |
+| `skills/voice-admin/SKILL.md` | Bundled agent skill for natural-language voice changes |
+| `dashboard/manifest.json` | Dashboard plugin manifest (`api: plugin_api.py`) |
+| `dashboard/plugin_api.py` | Backend routes: `GET/POST /settings`, `GET /voices`, `POST /preview` |
+| `dashboard/dist/` | Dashboard bundle (index.js + style.css) |
+| `desktop/plugin.js` | Desktop-app half of the unified package (same UI, opt-in) |
 | `tests/` | Pure pytest suite — no Hermes install, no network (all HTTP mocked) |
 
 ## Tests
@@ -111,7 +145,7 @@ Per-call overrides (`voice`, `model`, `speed`) passed by the gateway take preced
 python3 -m pytest tests/ -v
 ```
 
-The suite covers normalization behavior (fenced/inline code, markdown, abbreviations), config resolution (env precedence, defaults), request payload shape (auth header, model, latency, chunk_length, format, reference_id, prosody), sentence chunking, error handling, and `is_available()` when the key is unset. No `FISH_API_KEY` is needed to run it.
+The suite covers normalization behavior (fenced/inline code, markdown, abbreviations), config resolution (precedence: setting > env > default), the `fishaudio_voice_admin` tool contract (JSON-string responses, **kwargs tolerance, catalog validation, persist-before-apply), the dashboard backend endpoints (settings read/write, voice TTL cache, preview, no-secrets-in-responses), request payload shape (auth header, model, latency, chunk_length, format, reference_id, prosody), sentence chunking, error handling, and `is_available()` when the key is unset. No `FISH_API_KEY` is needed to run it.
 
 ## Notes
 

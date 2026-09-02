@@ -44,6 +44,59 @@ from .normalize import normalize_for_speech
 
 logger = logging.getLogger(__name__)
 
+# -- plugin settings (v1.2.0) ------------------------------------------------
+# Persisted via ctx.set_config under plugins.entries.fishaudio.settings.<key>.
+# Resolution order at synth time: plugin setting > env var > built-in default.
+# Secrets (FISH_API_KEY) NEVER go through get_config/set_config — the key
+# stays in .env only.
+SETTING_KEYS = ("voice_id", "model", "latency", "chunk_length")
+
+_LATENCY_MODES = ("normal", "balanced")   # Fish Audio documented values
+
+
+def _validate_settings(patch) -> tuple[dict, list[str]]:
+    """Validate a settings patch. Returns (clean, errors)."""
+    errors: list[str] = []
+    clean: dict = {}
+    if not isinstance(patch, dict):
+        return clean, ["settings patch must be an object"]
+    if "voice_id" in patch:
+        v = patch["voice_id"]
+        if v is None or (isinstance(v, str) and not v.strip()):
+            clean["voice_id"] = None       # explicit unset -> env/default
+        elif isinstance(v, str):
+            clean["voice_id"] = v.strip()
+        else:
+            errors.append("voice_id must be a string or null")
+    if "model" in patch:
+        v = patch["model"]
+        if not isinstance(v, str) or not v.strip():
+            errors.append("model must be a non-empty string")
+        else:
+            clean["model"] = v.strip()
+    if "latency" in patch:
+        v = patch["latency"]
+        if not isinstance(v, str) or v.strip() not in _LATENCY_MODES:
+            errors.append(
+                f"latency must be one of {', '.join(_LATENCY_MODES)}"
+            )
+        else:
+            clean["latency"] = v.strip()
+    if "chunk_length" in patch:
+        v = patch["chunk_length"]
+        try:
+            n = int(v)
+        except (TypeError, ValueError):
+            n = None
+        if n is None or not (20 <= n <= 2000):
+            errors.append("chunk_length must be an integer between 20 and 2000")
+        else:
+            clean["chunk_length"] = n
+    unknown = sorted(set(patch) - set(SETTING_KEYS))
+    if unknown:
+        errors.append(f"unknown setting(s): {', '.join(unknown)}")
+    return clean, errors
+
 _FISH_URL = "https://api.fish.audio/v1/tts"
 _FISH_MODELS_URL = "https://api.fish.audio/model"
 _DEFAULT_MODEL = "s2.1-pro-free"
@@ -89,6 +142,40 @@ class FishAudioTTSProvider(TTSProvider):
     def __init__(self) -> None:
         self._voices_cache: list[dict] | None = None
         self._voices_cached_at: float = 0.0
+        # Mutable settings the provider consults at synth time. Filled by
+        # ``attach_settings(ctx)`` from the plugin's persisted config; updated
+        # in place by the voice-admin tool / dashboard API on ``set_settings``.
+        self.settings: dict = {
+            "voice_id": None,
+            "model": None,
+            "latency": None,
+            "chunk_length": None,
+        }
+
+    def attach_settings(self, ctx) -> None:
+        """Snapshot the plugin's persisted settings into ``self.settings``.
+
+        Reads once at register() time (keys individually, tolerating any
+        get_config signature) and again on every ``set_settings`` write, so
+        synth-time resolution never depends on ctx being reachable.
+        """
+        for key in SETTING_KEYS:
+            try:
+                self.settings[key] = ctx.get_config(key)
+            except Exception:
+                try:
+                    self.settings[key] = ctx.get_config(key, None)
+                except Exception as exc:
+                    logger.debug("fishaudio.get_config(%r) failed: %s", key, exc)
+                    self.settings[key] = None
+
+    def apply_settings(self, clean: dict) -> None:
+        """Merge validated values into the live settings dict (no persist)."""
+        self.settings.update(clean)
+
+    def current_settings(self) -> dict:
+        """Settings snapshot for display — raw stored values (may be None)."""
+        return dict(self.settings)
 
     @property
     def name(self) -> str:
@@ -198,9 +285,33 @@ class FishAudioTTSProvider(TTSProvider):
     # -- internal helpers ---------------------------------------------------
 
     def _resolve(self, voice, model):
-        voice_id = voice or os.environ.get("FISH_VOICE_ID") or None
-        model_id = model or os.environ.get("FISH_TTS_MODEL") or _DEFAULT_MODEL
+        """Precedence: call arg > plugin setting > env var > built-in default.
+
+        ``voice``/``model`` are the TTS-provider interface's per-call
+        overrides (unchanged signature). Plugin settings are consulted
+        BEFORE env vars so the persisted voice/model wins over legacy
+        FISH_VOICE_ID / FISH_TTS_MODEL. Voice has no built-in default
+        (None = Fish's server-side default voice).
+        """
+        voice_id = (
+            voice
+            or self.settings.get("voice_id")
+            or os.environ.get("FISH_VOICE_ID")
+            or None
+        )
+        model_id = (
+            model
+            or self.settings.get("model")
+            or os.environ.get("FISH_TTS_MODEL")
+            or _DEFAULT_MODEL
+        )
         return voice_id, model_id
+
+    def _effective_latency(self) -> str:
+        return self.settings.get("latency") or _SYNTH_KWARGS["latency"]
+
+    def _effective_chunk_length(self) -> int:
+        return self.settings.get("chunk_length") or _SYNTH_KWARGS["chunk_length"]
 
     @staticmethod
     def _cache_enabled() -> bool:
@@ -256,7 +367,9 @@ class FishAudioTTSProvider(TTSProvider):
         body = {
             "text": text,
             "format": fmt,
-            **_SYNTH_KWARGS,
+            "normalize": _SYNTH_KWARGS["normalize"],
+            "latency": self._effective_latency(),
+            "chunk_length": self._effective_chunk_length(),
         }
         if voice_id:
             body["reference_id"] = voice_id
